@@ -27,9 +27,12 @@ const ArtistListActions = ({
           context: 'button',
         })}
       {isGrid && isNotSmall && <ZoomControl />}
-      {isNotSmall && (
-        <ViewModeToggler resource="artist" showTitle={false} />
-      )}
+      {/* Always visible, including mobile: without this, small screens
+          would be stuck on the grid with no way back to the
+          purpose-built ArtistSimpleList (see ArtistList.jsx) - the toggle
+          previously only rendered on non-small screens, silently removing
+          that choice on mobile the moment grid became the default view. */}
+      <ViewModeToggler resource="artist" showTitle={false} />
       {isNotSmall && !isGrid && <ToggleFieldsMenu resource="artist" />}
     </TopToolbar>
   )

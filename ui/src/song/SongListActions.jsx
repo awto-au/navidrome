@@ -1,7 +1,13 @@
 import React, { cloneElement } from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { ShuffleAllButton, ToggleFieldsMenu } from '../common'
+import { useSelector } from 'react-redux'
+import {
+  ShuffleAllButton,
+  ToggleFieldsMenu,
+  ViewModeToggler,
+  ZoomControl,
+} from '../common'
 
 export const SongListActions = ({
   currentSort,
@@ -22,6 +28,7 @@ export const SongListActions = ({
   ...rest
 }) => {
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isGrid = useSelector((state) => state.viewMode?.song?.grid ?? false)
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <ShuffleAllButton filters={filterValues} />
@@ -33,7 +40,9 @@ export const SongListActions = ({
           filterValues,
           context: 'button',
         })}
-      {isNotSmall && <ToggleFieldsMenu resource="song" />}
+      {isGrid && isNotSmall && <ZoomControl />}
+      <ViewModeToggler resource="song" showTitle={false} defaultGrid={false} />
+      {isNotSmall && !isGrid && <ToggleFieldsMenu resource="song" />}
     </TopToolbar>
   )
 }

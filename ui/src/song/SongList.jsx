@@ -27,7 +27,7 @@ import {
   ArtistLinkField,
   PathField,
 } from '../common'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { setTrack } from '../actions'
@@ -36,6 +36,7 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import SongGridView from './SongGridView'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -133,6 +134,10 @@ const SongList = (props) => {
   const dispatch = useDispatch()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  // Defaults to table (unlike Albums/Artists) since Songs' table view is
+  // the more information-dense, established default; gallery is opt-in
+  // via the same ViewModeToggler in SongListActions.
+  const isGrid = useSelector((state) => state.viewMode?.song?.grid ?? false)
   useResourceRefresh('song')
 
   const handleRowClick = (id, basePath, record) => {
@@ -215,9 +220,11 @@ const SongList = (props) => {
         bulkActionButtons={<SongBulkActions />}
         actions={<SongListActions />}
         filters={<SongFilter />}
-        perPage={isXsmall ? 50 : 15}
+        perPage={isGrid ? 200 : isXsmall ? 50 : 15}
       >
-        {isXsmall ? (
+        {isGrid ? (
+          <SongGridView />
+        ) : isXsmall ? (
           <SongSimpleList />
         ) : (
           <SongDatagrid
