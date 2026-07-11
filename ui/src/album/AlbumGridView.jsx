@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   GridList,
   GridListTile,
@@ -138,16 +138,39 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
+  // Only fetch cover art once the tile scrolls into (or near) the viewport,
+  // so a large page size doesn't eagerly fetch every album's art at once.
+  const [isVisible, setIsVisible] = useState(false)
+  const elRef = useRef(null)
+  useEffect(() => {
+    if (!elRef.current || isVisible) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '800px' },
+    )
+    observer.observe(elRef.current)
+    return () => observer.disconnect()
+  }, [isVisible])
+  const setRefs = (node) => {
+    elRef.current = node
+    measureRef(node)
+  }
+
   const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
-  const { imgUrl, loading: imageLoading } = useImageUrl(url)
+  const { imgUrl, loading: imageLoading } = useImageUrl(isVisible ? url : null)
 
   return (
-    <div ref={measureRef} className={classes.coverContainer}>
+    <div ref={setRefs} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
         <img
           src={imgUrl || undefined}
           alt={record.name}
-          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+          className={`${classes.cover} ${imageLoading || !isVisible ? classes.coverLoading : ''}`}
         />
       </div>
     </div>
@@ -211,10 +234,63 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   )
 }
 
+// Accumulates every fetched page's ids into one continuously growing list
+// (instead of react-admin's default of replacing the visible set each page),
+// and advances the page automatically as the user nears the bottom, so the
+// grid scrolls through the whole library with no "Next page" boundary.
+const useInfiniteScroll = (ids, page, total, loading, setPage) => {
+  const [accumulated, setAccumulated] = useState(ids)
+  const sentinelRef = useRef(null)
+  const triggeredForPage = useRef(0)
+
+  useEffect(() => {
+    if (loading) return
+    if (page === 1) {
+      setAccumulated(ids)
+    } else {
+      setAccumulated((prev) => {
+        const seen = new Set(prev)
+        const fresh = ids.filter((id) => !seen.has(id))
+        return fresh.length ? [...prev, ...fresh] : prev
+      })
+    }
+  }, [ids, page, loading])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (
+          entry.isIntersecting &&
+          !loading &&
+          accumulated.length < total &&
+          triggeredForPage.current < page
+        ) {
+          triggeredForPage.current = page
+          setPage(page + 1)
+        }
+      },
+      { rootMargin: '1000px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loading, accumulated.length, total, page, setPage])
+
+  return { accumulated, sentinelRef }
+}
+
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
-  const { filterValues } = useListContext()
+  const { filterValues, page, total, loading, setPage } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
+  const { accumulated, sentinelRef } = useInfiniteScroll(
+    ids,
+    page,
+    total,
+    loading,
+    setPage,
+  )
   return (
     <div className={classes.root}>
       <GridList
@@ -223,7 +299,7 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         cols={getColsForWidth(width)}
         spacing={20}
       >
-        {ids.map((id) => (
+        {accumulated.map((id) => (
           <GridListTile className={classes.gridListTile} key={id}>
             <AlbumGridTile
               record={data[id]}
@@ -233,6 +309,9 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
           </GridListTile>
         ))}
       </GridList>
+      {accumulated.length < total && (
+        <div ref={sentinelRef} style={{ height: 1 }} />
+      )}
     </div>
   )
 }

@@ -175,6 +175,12 @@ const AlbumListTitle = ({ albumListType }) => {
 
 const AlbumListPagination = ({ albumListType, ...rest }) => {
   const { loading } = useListContext()
+  const albumView = useSelector((state) => state.albumView)
+  // Grid view scrolls through the whole library via useInfiniteScroll
+  // (see AlbumGridView.jsx) instead of a page-by-page footer.
+  if (albumView.grid) {
+    return null
+  }
   if (loading && albumListType === 'random') {
     return null
   }

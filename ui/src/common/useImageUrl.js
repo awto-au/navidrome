@@ -6,9 +6,10 @@ const cache = new Map()
 const MAX_CACHE_SIZE = 300
 
 // Limit concurrent fetches to leave browser connections free for API requests.
-// Browsers allow ~6 connections per origin on HTTP/1.1; reserving 2 for API
-// calls prevents image fetches from blocking pagination/data requests.
-const MAX_CONCURRENT = 4
+// Now that covers are also viewport-gated (see AlbumGridView's IntersectionObserver),
+// only near-visible tiles compete for these slots at once, so this can run higher
+// than a page-wide eager-load scheme could safely afford.
+const MAX_CONCURRENT = 8
 let activeFetches = 0
 const pendingQueue = []
 
