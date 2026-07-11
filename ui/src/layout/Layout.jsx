@@ -25,7 +25,7 @@ const isTypingTarget = (el) =>
     el.tagName === 'SELECT' ||
     el.isContentEditable)
 
-const findScrollTarget = () => {
+const searchScrollTarget = () => {
   const { scrollingElement } = document
   if (scrollingElement && scrollingElement.scrollHeight > scrollingElement.clientHeight) {
     return scrollingElement
@@ -48,6 +48,25 @@ const findScrollTarget = () => {
   return best
 }
 
+// searchScrollTarget() walks the whole DOM with getComputedStyle on every
+// element - fine once, too slow to redo on every keystroke of a held-down
+// or fast-repeated key. The scrollable region doesn't change between
+// keypresses on the same page, so cache it and only re-search when it's
+// gone stale (route change unmounted it, or it stopped overflowing).
+let cachedScrollTarget = null
+
+const findScrollTarget = () => {
+  if (
+    cachedScrollTarget &&
+    cachedScrollTarget.isConnected &&
+    cachedScrollTarget.scrollHeight > cachedScrollTarget.clientHeight
+  ) {
+    return cachedScrollTarget
+  }
+  cachedScrollTarget = searchScrollTarget()
+  return cachedScrollTarget
+}
+
 const useScrollKeys = () => {
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -57,11 +76,13 @@ const useScrollKeys = () => {
       if (!target) return
       e.preventDefault()
       const page = target.clientHeight * 0.9
-      if (e.key === 'PageDown') target.scrollBy({ top: page, behavior: 'smooth' })
-      else if (e.key === 'PageUp') target.scrollBy({ top: -page, behavior: 'smooth' })
-      else if (e.key === 'Home') target.scrollTo({ top: 0, behavior: 'smooth' })
-      else if (e.key === 'End')
-        target.scrollTo({ top: target.scrollHeight, behavior: 'smooth' })
+      // Instant, not smooth: smooth-scroll animations queued by fast
+      // repeated keypresses interrupt/cancel each other, so holding the
+      // key down (or pressing it rapidly) barely moves the page at all.
+      if (e.key === 'PageDown') target.scrollBy({ top: page })
+      else if (e.key === 'PageUp') target.scrollBy({ top: -page })
+      else if (e.key === 'Home') target.scrollTo({ top: 0 })
+      else if (e.key === 'End') target.scrollTo({ top: target.scrollHeight })
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
