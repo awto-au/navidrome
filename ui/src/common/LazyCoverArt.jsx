@@ -50,14 +50,13 @@ export const LazyCoverArt = ({ record, alt, size, className }) => {
 
   // Request a size matching how big the tile is actually rendered, instead
   // of always asking for a fixed size regardless of zoom level - at the
-  // smallest zoom this cuts payload size substantially; at the largest
-  // zoom it asks for more so the art doesn't look soft when upscaled.
-  // Rounded to the nearest 50px so the same request (and its 10-year
-  // Cache-Control) gets reused across small zoom-slider nudges rather
-  // than missing the cache on every pixel of movement.
+  // smallest zoom this cuts payload size substantially. Deliberately not
+  // multiplied by devicePixelRatio (thumbnail browsing doesn't need
+  // retina-sharp art, and it roughly doubled every request on high-DPI
+  // screens) and rounded DOWN to the nearest 50px rather than up, so the
+  // request is never bigger than what's actually needed.
   const { tileSize } = useZoomLevel()
-  const requestSize =
-    size || Math.min(600, Math.ceil((tileSize * (window.devicePixelRatio || 1)) / 50) * 50)
+  const requestSize = size || Math.max(50, Math.floor(tileSize / 50) * 50)
   const url = subsonic.getCoverArtUrl(record, requestSize, true)
   const { imgUrl, loading } = useImageUrl(isVisible ? url : null)
 
