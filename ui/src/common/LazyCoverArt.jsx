@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 import subsonic from '../subsonic'
-import config from '../config'
 import { useImageUrl } from './useImageUrl'
+import { useZoomLevel } from './useZoomLevel'
 
 const useStyles = makeStyles({
   container: {
@@ -48,7 +48,17 @@ export const LazyCoverArt = ({ record, alt, size, className }) => {
     return () => observer.disconnect()
   }, [isVisible])
 
-  const url = subsonic.getCoverArtUrl(record, size || config.uiCoverArtSize, true)
+  // Request a size matching how big the tile is actually rendered, instead
+  // of always asking for a fixed size regardless of zoom level - at the
+  // smallest zoom this cuts payload size substantially; at the largest
+  // zoom it asks for more so the art doesn't look soft when upscaled.
+  // Rounded to the nearest 50px so the same request (and its 10-year
+  // Cache-Control) gets reused across small zoom-slider nudges rather
+  // than missing the cache on every pixel of movement.
+  const { tileSize } = useZoomLevel()
+  const requestSize =
+    size || Math.min(600, Math.ceil((tileSize * (window.devicePixelRatio || 1)) / 50) * 50)
+  const url = subsonic.getCoverArtUrl(record, requestSize, true)
   const { imgUrl, loading } = useImageUrl(isVisible ? url : null)
 
   return (
