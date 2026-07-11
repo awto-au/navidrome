@@ -19,6 +19,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
+import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 import {
   ArtistContextMenu,
@@ -32,6 +33,7 @@ import {
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import ArtistSimpleList from './ArtistSimpleList'
+import ArtistGridView from './ArtistGridView'
 import { DraggableTypes } from '../consts'
 import en from '../i18n/en.json'
 import { formatBytes } from '../utils/index.js'
@@ -127,11 +129,15 @@ const ArtistDatagrid = (props) => (
 )
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
-  const { filterValues } = rest
+  const { filterValues, ids, data } = rest
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  // Defaults to grid (undefined -> true) the first time this resource's
+  // view mode is checked, per the "Artists needs an album-style view"
+  // request - table remains available via the toggle in ArtistListActions.
+  const isGrid = useSelector((state) => state.viewMode?.artist?.grid ?? true)
   useResourceRefresh('artist')
 
   const role = filterValues?.role
@@ -166,7 +172,9 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     columns: toggleableFields,
   })
 
-  return isXsmall ? (
+  return isGrid ? (
+    <ArtistGridView ids={ids} data={data} handleArtistLink={handleArtistLink} />
+  ) : isXsmall ? (
     <ArtistSimpleList
       linkType={(id) => history.push(handleArtistLink(id))}
       {...rest}
@@ -206,10 +214,17 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
 }
 
 const ArtistList = (props) => {
+  // Grid view wants a large page so infinite scroll only needs a couple of
+  // auto-triggered page advances to fill the screen (matches Albums' own
+  // large default, which is what makes ITS infinite scroll reliable in
+  // practice); table view keeps the smaller default that suits a paged
+  // table better.
+  const isGrid = useSelector((state) => state.viewMode?.artist?.grid ?? true)
   return (
     <>
       <List
         {...props}
+        perPage={isGrid ? 200 : 15}
         sort={{ field: 'name', order: 'ASC' }}
         exporter={false}
         bulkActionButtons={false}

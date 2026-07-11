@@ -15,7 +15,7 @@ import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
 import ViewModuleIcon from '@material-ui/icons/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
 import { albumViewGrid, albumViewTable } from '../actions'
-import { ToggleFieldsMenu } from '../common'
+import { ToggleFieldsMenu, ZoomControl } from '../common'
 
 const useStyles = makeStyles({
   title: { margin: '1rem' },
@@ -99,6 +99,7 @@ const AlbumListActions = ({
           filterValues,
           context: 'button',
         })}
+      {albumView.grid && isNotSmall && <ZoomControl />}
       {isNotSmall ? (
         <ToggleFieldsMenu
           resource="album"

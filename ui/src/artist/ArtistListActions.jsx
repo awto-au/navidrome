@@ -1,7 +1,8 @@
 import React, { cloneElement } from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { ToggleFieldsMenu } from '../common'
+import { useSelector } from 'react-redux'
+import { ToggleFieldsMenu, ViewModeToggler, ZoomControl } from '../common'
 
 const ArtistListActions = ({
   className,
@@ -13,6 +14,7 @@ const ArtistListActions = ({
   ...rest
 }) => {
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const isGrid = useSelector((state) => state.viewMode?.artist?.grid ?? true)
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
@@ -24,7 +26,11 @@ const ArtistListActions = ({
           filterValues,
           context: 'button',
         })}
-      {isNotSmall && <ToggleFieldsMenu resource="artist" />}
+      {isGrid && isNotSmall && <ZoomControl />}
+      {isNotSmall && (
+        <ViewModeToggler resource="artist" showTitle={false} />
+      )}
+      {isNotSmall && !isGrid && <ToggleFieldsMenu resource="artist" />}
     </TopToolbar>
   )
 }
